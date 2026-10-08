@@ -7,12 +7,12 @@
     <!-- Apple Standalone App Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Family Radio">
+    <meta name="apple-mobile-web-app-title" content="Ραδιάκι μας">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" href="apple-touch-icon.png">
     <meta name="theme-color" content="#000000">
 
-    <title>Family Radio</title>
+    <title>Το Ραδιάκι μας</title>
 
     <style>
         :root {
@@ -161,8 +161,8 @@
 <body>
 
     <header>
-        <h1>Family Radio</h1>
-        <p>Direct Ad-Free Online Streams</p>
+        <h1>Το Ραδιάκι μας</h1>
+        <p>της οικογένειας Μπακόλα · χωρίς διαφημίσεις ♥</p>
     </header>
 
     <div class="station-list" id="stationList"></div>
@@ -170,7 +170,7 @@
     <div class="player-bar" id="playerBar">
         <div>
             <div class="now-playing-title" id="currentStationName">Station</div>
-            <div class="now-playing-sub" id="statusText">Playing Live</div>
+            <div class="now-playing-sub" id="statusText">Ζωντανά</div>
         </div>
         <button onclick="togglePlay()" id="playPauseBtn" class="control-btn">⏸</button>
     </div>
@@ -263,7 +263,7 @@
 
         // Status follows what the audio REALLY does, not what we hope
         player.addEventListener('playing', () => {
-            setStatus('Playing Live');
+            setStatus('Ζωντανά');
             playPauseBtn.innerText = '⏸';
         });
         player.addEventListener('waiting', () => setStatus('Φόρτωση...'));
@@ -281,7 +281,7 @@
             } else {
                 player.pause();
                 playPauseBtn.innerText = '▶';
-                setStatus('Paused');
+                setStatus('Σε παύση');
             }
         }
     </script>
