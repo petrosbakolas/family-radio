@@ -170,7 +170,7 @@
             <div class="play-btn">▶</div>
         </div>
 
-        <div class="station-card" onclick="playStation('Ερωτικός FM 94.8', 'https://corsproxy.io/?url=' + encodeURIComponent('http://eu1.fastcast4u.com:21624/stream'))">
+        <div class="station-card" onclick="playStation('Ερωτικός FM 94.8', 'http://eu1.fastcast4u.com:21624/stream')">
             <div class="station-info">
                 <h2>Ερωτικός FM</h2>
                 <p>94.8 FM — Thessaloniki</p>
@@ -178,7 +178,7 @@
             <div class="play-btn">▶</div>
         </div>
 
-        <div class="station-card" onclick="playStation('Σοχός FM 88.7', 'https://corsproxy.io/?url=' + encodeURIComponent('http://212.95.45.82:32032/stream'))">
+        <div class="station-card" onclick="playStation('Σοχός FM 88.7', 'http://212.95.45.82:32032/stream')">
             <div class="station-info">
                 <h2>Σοχός FM</h2>
                 <p>88.7 FM — Thessaloniki</p>
@@ -210,13 +210,26 @@
             statusText.innerText = 'Connecting...';
             playerBar.style.display = 'flex';
             
-            player.src = url;
+            // Try direct stream first; if non-SSL, route through allorigins stream wrapper
+            let targetUrl = url;
+            if (window.location.protocol === 'https:' && url.startsWith('http:')) {
+                targetUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+            }
+
+            player.src = targetUrl;
             player.play().then(() => {
                 statusText.innerText = 'Playing Live';
                 playPauseBtn.innerText = '⏸';
-            }).catch(() => {
-                statusText.innerText = 'Tap play to start';
-                playPauseBtn.innerText = '▶';
+            }).catch((err) => {
+                console.error("Direct play blocked, attempting secondary route...", err);
+                player.src = 'https://cors-anywhere.herokuapp.com/' + url;
+                player.play().then(() => {
+                    statusText.innerText = 'Playing Live';
+                    playPauseBtn.innerText = '⏸';
+                }).catch(() => {
+                    statusText.innerText = 'Tap play to retry';
+                    playPauseBtn.innerText = '▶';
+                });
             });
         }
 
