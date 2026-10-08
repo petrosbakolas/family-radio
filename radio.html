@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
+
     <!-- Apple Standalone App Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Family Radio">
-    
+
     <title>Family Radio</title>
-    
+
     <style>
         :root {
             --bg-color: #000000;
@@ -19,6 +19,7 @@
             --accent-color: #0a84ff;
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
+            --error-color: #ff453a;
         }
 
         * {
@@ -72,11 +73,16 @@
             justify-content: space-between;
             cursor: pointer;
             transition: transform 0.12s ease, background-color 0.15s ease;
+            border: 1px solid transparent;
         }
 
         .station-card:active {
             transform: scale(0.98);
             background-color: var(--card-active);
+        }
+
+        .station-card.active {
+            border-color: var(--accent-color);
         }
 
         .station-info h2 {
@@ -104,7 +110,6 @@
             flex-shrink: 0;
         }
 
-        /* Fixed Bottom Mini Player */
         .player-bar {
             position: fixed;
             bottom: 24px;
@@ -118,7 +123,7 @@
             border: 0.5px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 14px 20px;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
@@ -133,6 +138,10 @@
             font-size: 12px;
             color: var(--accent-color);
             margin-top: 2px;
+        }
+
+        .now-playing-sub.error {
+            color: var(--error-color);
         }
 
         .control-btn {
@@ -153,42 +162,9 @@
         <p>Direct Ad-Free Online Streams</p>
     </header>
 
-    <div class="station-list">
-        <div class="station-card" onclick="playStation('Δεύτερο Πρόγραμμα 103.7', 'https://radiostreaming.ert.gr/ert-deftero')">
-            <div class="station-info">
-                <h2>Δεύτερο Πρόγραμμα</h2>
-                <p>103.7 FM — ERT Live</p>
-            </div>
-            <div class="play-btn">▶</div>
-        </div>
+    <div class="station-list" id="stationList"></div>
 
-        <div class="station-card" onclick="playStation('Μελωδία FM 99.2', 'https://stream.radiojar.com/melodia992')">
-            <div class="station-info">
-                <h2>Μελωδία FM</h2>
-                <p>99.2 FM — Athens</p>
-            </div>
-            <div class="play-btn">▶</div>
-        </div>
-
-        <div class="station-card" onclick="playStation('Ερωτικός FM 94.8', 'http://eu1.fastcast4u.com:21624/stream')">
-            <div class="station-info">
-                <h2>Ερωτικός FM</h2>
-                <p>94.8 FM — Thessaloniki</p>
-            </div>
-            <div class="play-btn">▶</div>
-        </div>
-
-        <div class="station-card" onclick="playStation('Σοχός FM 88.7', 'http://212.95.45.82:32032/stream')">
-            <div class="station-info">
-                <h2>Σοχός FM</h2>
-                <p>88.7 FM — Thessaloniki</p>
-            </div>
-            <div class="play-btn">▶</div>
-        </div>
-    </div>
-
-    <!-- Live Audio Player Bar -->
-    <div class="player-bar" id="playerBar" style="display:none;">
+    <div class="player-bar" id="playerBar">
         <div>
             <div class="now-playing-title" id="currentStationName">Station</div>
             <div class="now-playing-sub" id="statusText">Playing Live</div>
@@ -196,52 +172,113 @@
         <button onclick="togglePlay()" id="playPauseBtn" class="control-btn">⏸</button>
     </div>
 
-    <audio id="audioPlayer"></audio>
+    <audio id="audioPlayer" preload="none"></audio>
 
     <script>
+        // ============================================================
+        //  STATIONS — the only part you ever need to edit.
+        //  Every URL MUST start with https:// (GitHub Pages is https,
+        //  and browsers silently block http:// audio on https pages).
+        // ============================================================
+        const STATIONS = [
+            {
+                name: 'Δεύτερο Πρόγραμμα',
+                sub: '103.7 FM — ERT Live',
+                url: 'https://radiostreaming.ert.gr/ert-deftero'
+            },
+            {
+                name: 'Μελωδία FM',
+                sub: '99.2 FM — Athens',
+                url: 'https://stream.radiojar.com/melodia992'
+            },
+            {
+                name: 'Ερωτικός FM',
+                sub: '94.8 FM — Thessaloniki',
+                // Official HTTPS stream, taken from eroticos.gr's own player
+                url: 'https://eu1.fastcast4u.com/proxy/nmarog01?mp=/1'
+            },
+            {
+                name: 'Σοχός FM',
+                sub: '88.7 FM — Thessaloniki',
+                // Official HTTPS stream, taken from sohosfm.gr's own player
+                url: 'https://solid55.streamupsolutions.com/proxy/zskzsrci?mp=/1'
+            }
+        ];
+
         const player = document.getElementById('audioPlayer');
         const playerBar = document.getElementById('playerBar');
         const stationNameLabel = document.getElementById('currentStationName');
         const statusText = document.getElementById('statusText');
         const playPauseBtn = document.getElementById('playPauseBtn');
+        const list = document.getElementById('stationList');
 
-        function playStation(name, url) {
-            stationNameLabel.innerText = name;
-            statusText.innerText = 'Connecting...';
-            playerBar.style.display = 'flex';
-            
-            // Try direct stream first; if non-SSL, route through allorigins stream wrapper
-            let targetUrl = url;
-            if (window.location.protocol === 'https:' && url.startsWith('http:')) {
-                targetUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-            }
+        let current = null;
 
-            player.src = targetUrl;
-            player.play().then(() => {
-                statusText.innerText = 'Playing Live';
-                playPauseBtn.innerText = '⏸';
-            }).catch((err) => {
-                console.error("Direct play blocked, attempting secondary route...", err);
-                player.src = 'https://cors-anywhere.herokuapp.com/' + url;
-                player.play().then(() => {
-                    statusText.innerText = 'Playing Live';
-                    playPauseBtn.innerText = '⏸';
-                }).catch(() => {
-                    statusText.innerText = 'Tap play to retry';
-                    playPauseBtn.innerText = '▶';
-                });
+        // Build the cards from the list above
+        STATIONS.forEach((s, i) => {
+            const card = document.createElement('div');
+            card.className = 'station-card';
+            card.innerHTML =
+                '<div class="station-info"><h2>' + s.name + '</h2><p>' + s.sub + '</p></div>' +
+                '<div class="play-btn">▶</div>';
+            card.onclick = () => playStation(i);
+            list.appendChild(card);
+        });
+
+        function setStatus(text, isError) {
+            statusText.innerText = text;
+            statusText.classList.toggle('error', !!isError);
+        }
+
+        function highlight(i) {
+            document.querySelectorAll('.station-card').forEach((c, idx) => {
+                c.classList.toggle('active', idx === i);
             });
         }
 
+        function playStation(i) {
+            const s = STATIONS[i];
+            current = i;
+            stationNameLabel.innerText = s.name;
+            playerBar.style.display = 'flex';
+            highlight(i);
+
+            if (!s.url.startsWith('https://')) {
+                setStatus('Λείπει το https link', true);
+                playPauseBtn.innerText = '▶';
+                return;
+            }
+
+            setStatus('Σύνδεση...');
+            // Add a cache-buster so a live stream always starts "now"
+            player.src = s.url + (s.url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            player.play().catch(() => {
+                setStatus('Πάτα ▶ ξανά', true);
+                playPauseBtn.innerText = '▶';
+            });
+        }
+
+        // Status follows what the audio REALLY does, not what we hope
+        player.addEventListener('playing', () => {
+            setStatus('Playing Live');
+            playPauseBtn.innerText = '⏸';
+        });
+        player.addEventListener('waiting', () => setStatus('Φόρτωση...'));
+        player.addEventListener('error', () => {
+            if (current === null) return;
+            setStatus('Ο σταθμός δεν απαντά', true);
+            playPauseBtn.innerText = '▶';
+        });
+
         function togglePlay() {
+            if (current === null) return;
             if (player.paused) {
-                player.play();
-                playPauseBtn.innerText = '⏸';
-                statusText.innerText = 'Playing Live';
+                // Reconnect to the live point instead of resuming old buffer
+                playStation(current);
             } else {
                 player.pause();
                 playPauseBtn.innerText = '▶';
-                statusText.innerText = 'Paused';
+                setStatus('Paused');
             }
         }
     </script>
