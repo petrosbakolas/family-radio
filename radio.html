@@ -32,7 +32,7 @@
 
         body {
             margin: 0;
-            padding: 20px 16px 120px 16px;
+            padding: 20px 16px 130px 16px;
             background-color: var(--bg-color);
             color: var(--text-primary);
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -43,7 +43,7 @@
         header {
             text-align: center;
             margin-top: 40px;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
         }
 
         header h1 {
@@ -57,6 +57,16 @@
             color: var(--text-secondary);
             font-size: 14px;
             margin: 0;
+        }
+
+        .section-title {
+            max-width: 480px;
+            margin: 26px auto 10px auto;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
         }
 
         .station-list {
@@ -113,6 +123,61 @@
             flex-shrink: 0;
         }
 
+        /* ---- Καινή Διαθήκη ---- */
+        .book-list {
+            max-width: 480px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .book-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            cursor: pointer;
+            border-top: 0.5px solid rgba(255,255,255,0.08);
+        }
+
+        .book-row:first-child { border-top: none; }
+        .book-row:active { background-color: var(--card-active); }
+
+        .book-name { font-size: 17px; }
+        .book-meta { font-size: 13px; color: var(--text-secondary); }
+        .book-row.open .book-meta { color: var(--accent-color); }
+
+        .chapters {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+            gap: 8px;
+            padding: 4px 16px 16px 16px;
+        }
+
+        .chapters.open { display: grid; }
+
+        .chip {
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            background-color: var(--card-active);
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .chip.active {
+            background-color: var(--accent-color);
+        }
+
+        .resume-card {
+            display: none;
+            margin-bottom: 12px;
+        }
+
+        /* ---- Player bar ---- */
         .player-bar {
             position: fixed;
             bottom: 24px;
@@ -125,16 +190,22 @@
             -webkit-backdrop-filter: blur(25px);
             border: 0.5px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
-            padding: 14px 20px;
+            padding: 14px 16px 14px 20px;
             display: none;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
         }
+
+        .now-playing { min-width: 0; }
 
         .now-playing-title {
             font-size: 16px;
             font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .now-playing-sub {
@@ -143,9 +214,9 @@
             margin-top: 2px;
         }
 
-        .now-playing-sub.error {
-            color: var(--error-color);
-        }
+        .now-playing-sub.error { color: var(--error-color); }
+
+        .controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
         .control-btn {
             background: none;
@@ -153,9 +224,15 @@
             color: var(--text-primary);
             font-size: 24px;
             cursor: pointer;
+            width: 40px;
+            height: 40px;
             padding: 0;
-            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
+        .control-btn svg { width: 22px; height: 22px; }
     </style>
 </head>
 <body>
@@ -165,17 +242,40 @@
         <p>της οικογένειας Μπακόλα · χωρίς διαφημίσεις ♥</p>
     </header>
 
+    <div class="section-title">Ραδιόφωνο</div>
     <div class="station-list" id="stationList"></div>
 
-    <div class="player-bar" id="playerBar">
-        <div>
-            <div class="now-playing-title" id="currentStationName">Station</div>
-            <div class="now-playing-sub" id="statusText">Ζωντανά</div>
+    <div id="bibleSection" style="display:none;">
+        <div class="section-title">Καινή Διαθήκη</div>
+        <div class="station-list">
+            <div class="station-card resume-card" id="resumeCard">
+                <div class="station-info">
+                    <h2>Συνέχεια</h2>
+                    <p id="resumeText"></p>
+                </div>
+                <div class="play-btn">▶</div>
+            </div>
         </div>
-        <button onclick="togglePlay()" id="playPauseBtn" class="control-btn">⏸</button>
+        <div class="book-list" id="bookList"></div>
+    </div>
+
+    <div class="player-bar" id="playerBar">
+        <div class="now-playing">
+            <div class="now-playing-title" id="currentName">—</div>
+            <div class="now-playing-sub" id="statusText"></div>
+        </div>
+        <div class="controls">
+            <button onclick="shareNow()" class="control-btn" aria-label="Κοινοποίηση">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+            </button>
+            <button onclick="togglePlay()" id="playPauseBtn" class="control-btn" aria-label="Αναπαραγωγή/Παύση">⏸</button>
+        </div>
     </div>
 
     <audio id="audioPlayer" preload="none"></audio>
+
+    <!-- The chapter list. If this file is missing, the Bible section simply stays hidden. -->
+    <script src="bible-tracks.js"></script>
 
     <script>
         // ============================================================
@@ -197,27 +297,36 @@
             {
                 name: 'Ερωτικός FM',
                 sub: '94.8 FM — Thessaloniki',
-                // Official HTTPS stream, taken from eroticos.gr's own player
                 url: 'https://eu1.fastcast4u.com/proxy/nmarog01?mp=/1'
             },
             {
                 name: 'Σοχός FM',
                 sub: '88.7 FM — Thessaloniki',
-                // Official HTTPS stream, taken from sohosfm.gr's own player
                 url: 'https://solid55.streamupsolutions.com/proxy/zskzsrci?mp=/1'
             }
         ];
 
         const player = document.getElementById('audioPlayer');
         const playerBar = document.getElementById('playerBar');
-        const stationNameLabel = document.getElementById('currentStationName');
+        const nameLabel = document.getElementById('currentName');
         const statusText = document.getElementById('statusText');
         const playPauseBtn = document.getElementById('playPauseBtn');
-        const list = document.getElementById('stationList');
 
+        // What is playing now: { type: 'radio', i } or { type: 'bible', i }
         let current = null;
 
-        // Build the cards from the list above
+        function setStatus(text, isError) {
+            statusText.innerText = text;
+            statusText.classList.toggle('error', !!isError);
+        }
+
+        function showBar(title) {
+            nameLabel.innerText = title;
+            playerBar.style.display = 'flex';
+        }
+
+        // ---------------- Radio ----------------
+        const stationList = document.getElementById('stationList');
         STATIONS.forEach((s, i) => {
             const card = document.createElement('div');
             card.className = 'station-card';
@@ -225,35 +334,25 @@
                 '<div class="station-info"><h2>' + s.name + '</h2><p>' + s.sub + '</p></div>' +
                 '<div class="play-btn">▶</div>';
             card.onclick = () => playStation(i);
-            list.appendChild(card);
+            stationList.appendChild(card);
         });
 
-        function setStatus(text, isError) {
-            statusText.innerText = text;
-            statusText.classList.toggle('error', !!isError);
-        }
-
-        function highlight(i) {
-            document.querySelectorAll('.station-card').forEach((c, idx) => {
+        function highlightStation(i) {
+            document.querySelectorAll('#stationList .station-card').forEach((c, idx) => {
                 c.classList.toggle('active', idx === i);
             });
         }
 
         function playStation(i) {
             const s = STATIONS[i];
-            current = i;
-            stationNameLabel.innerText = s.name;
-            playerBar.style.display = 'flex';
-            highlight(i);
-
-            if (!s.url.startsWith('https://')) {
-                setStatus('Λείπει το https link', true);
-                playPauseBtn.innerText = '▶';
-                return;
-            }
+            current = { type: 'radio', i: i };
+            showBar(s.name);
+            highlightStation(i);
+            highlightChapter(-1);
+            setMediaSession(s.name, s.sub);
 
             setStatus('Σύνδεση...');
-            // Add a cache-buster so a live stream always starts "now"
+            // Cache-buster so a live stream always starts "now"
             player.src = s.url + (s.url.includes('?') ? '&' : '?') + '_t=' + Date.now();
             player.play().catch(() => {
                 setStatus('Πάτα ▶ ξανά', true);
@@ -261,28 +360,224 @@
             });
         }
 
-        // Status follows what the audio REALLY does, not what we hope
+        // ---------------- Καινή Διαθήκη ----------------
+        const HAS_BIBLE = typeof BIBLE_TRACKS !== 'undefined' && BIBLE_TRACKS.length > 0;
+        const TRACKS = HAS_BIBLE ? BIBLE_TRACKS : [];
+        const SAVE_KEY = 'radiaki-bible-position';
+
+        // Turns the file-name spelling ("A KORINTHIOYS") into the proper Greek title
+        function bookTitle(raw) {
+            const s = raw.toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim();
+            const pm = s.match(/^(A|B|G|C|1|2|3)\s+(.*)$/);
+            const ord = pm ? ({ A: 'Α΄', '1': 'Α΄', B: 'Β΄', '2': 'Β΄', G: 'Γ΄', C: 'Γ΄', '3': 'Γ΄' })[pm[1]] : '';
+            const w = (pm ? pm[2] : s).replace(/ /g, '');
+            const has = (...keys) => keys.some(k => w.includes(k));
+            const pre = ord ? ord + ' ' : '';
+
+            if (has('APOK')) return 'Αποκάλυψη Ιωάννου';
+            if (has('MATH', 'MATTH')) return 'Κατά Ματθαίον';
+            if (has('MARK')) return 'Κατά Μάρκον';
+            if (has('LOYK', 'LOUK', 'LUK')) return 'Κατά Λουκάν';
+            if (has('IOAN', 'JOHN')) return ord ? pre + 'Ιωάννου' : 'Κατά Ιωάννην';
+            if (has('PRAX')) return 'Πράξεις των Αποστόλων';
+            if (has('ROM')) return 'Προς Ρωμαίους';
+            if (has('KORIN', 'CORIN')) return pre + 'Προς Κορινθίους';
+            if (has('GALAT')) return 'Προς Γαλάτας';
+            if (has('EFES', 'EPHES')) return 'Προς Εφεσίους';
+            if (has('FILHM', 'FILIM', 'PHILEM')) return 'Προς Φιλήμονα';
+            if (has('FILIP', 'PHILIP')) return 'Προς Φιλιππησίους';
+            if (has('KOLOS', 'COLOS')) return 'Προς Κολοσσαείς';
+            if (has('THESS')) return pre + 'Προς Θεσσαλονικείς';
+            if (has('TIMOTH')) return pre + 'Προς Τιμόθεον';
+            if (has('TIT')) return 'Προς Τίτον';
+            if (has('EBR', 'EVR', 'HEBR')) return 'Προς Εβραίους';
+            if (has('IAKOB', 'IAKOV', 'JAMES')) return 'Ιακώβου';
+            if (has('PETR')) return pre + 'Πέτρου';
+            if (has('IOYD', 'IOUD', 'JUDE')) return 'Ιούδα';
+            return raw; // unknown spelling: show it as it is
+        }
+
+        function trackLabel(t) {
+            return bookTitle(t.book) + (t.ch === 0 ? ' · Εισαγωγή' : ' · Κεφ. ' + t.ch);
+        }
+
+        if (HAS_BIBLE) {
+            document.getElementById('bibleSection').style.display = 'block';
+            const bookList = document.getElementById('bookList');
+
+            // Group chapters by book, keeping the original order
+            const books = [];
+            TRACKS.forEach((t, idx) => {
+                let b = books[books.length - 1];
+                if (!b || b.key !== t.book) {
+                    b = { key: t.book, items: [] };
+                    books.push(b);
+                }
+                b.items.push(idx);
+            });
+
+            books.forEach(b => {
+                const row = document.createElement('div');
+                row.className = 'book-row';
+                row.innerHTML =
+                    '<span class="book-name">' + bookTitle(b.key) + '</span>' +
+                    '<span class="book-meta">' + b.items.filter(i => TRACKS[i].ch > 0).length + ' κεφ. ›</span>';
+
+                const grid = document.createElement('div');
+                grid.className = 'chapters';
+                b.items.forEach(idx => {
+                    const chip = document.createElement('button');
+                    chip.className = 'chip';
+                    chip.dataset.idx = idx;
+                    chip.innerText = TRACKS[idx].ch === 0 ? 'Εισ.' : TRACKS[idx].ch;
+                    chip.onclick = () => playChapter(idx, 0);
+                    grid.appendChild(chip);
+                });
+
+                row.onclick = () => {
+                    const open = !grid.classList.contains('open');
+                    document.querySelectorAll('.chapters.open').forEach(g => g.classList.remove('open'));
+                    document.querySelectorAll('.book-row.open').forEach(r => r.classList.remove('open'));
+                    if (open) {
+                        grid.classList.add('open');
+                        row.classList.add('open');
+                    }
+                };
+
+                bookList.appendChild(row);
+                bookList.appendChild(grid);
+            });
+
+            // "Συνέχεια" card: where you stopped last time
+            const saved = loadPosition();
+            if (saved && TRACKS[saved.i]) {
+                const card = document.getElementById('resumeCard');
+                document.getElementById('resumeText').innerText = trackLabel(TRACKS[saved.i]);
+                card.style.display = 'flex';
+                card.onclick = () => playChapter(saved.i, saved.t || 0);
+            }
+        }
+
+        function highlightChapter(idx) {
+            document.querySelectorAll('.chip').forEach(c => {
+                c.classList.toggle('active', Number(c.dataset.idx) === idx);
+            });
+        }
+
+        let resumeAt = 0;
+
+        function playChapter(idx, startAt) {
+            const t = TRACKS[idx];
+            if (!t) return;
+            current = { type: 'bible', i: idx };
+            resumeAt = startAt || 0;
+            showBar(trackLabel(t));
+            highlightStation(-1);
+            highlightChapter(idx);
+            setMediaSession(trackLabel(t), 'Καινή Διαθήκη');
+
+            setStatus('Φόρτωση...');
+            player.src = t.url;
+            player.play().catch(() => {
+                setStatus('Πάτα ▶ ξανά', true);
+                playPauseBtn.innerText = '▶';
+            });
+        }
+
+        player.addEventListener('loadedmetadata', () => {
+            if (current && current.type === 'bible' && resumeAt > 0) {
+                player.currentTime = resumeAt;
+                resumeAt = 0;
+            }
+        });
+
+        // When a chapter ends, go straight to the next one
+        player.addEventListener('ended', () => {
+            if (current && current.type === 'bible' && current.i + 1 < TRACKS.length) {
+                playChapter(current.i + 1, 0);
+            }
+        });
+
+        // Remember the position every few seconds
+        let lastSave = 0;
+        player.addEventListener('timeupdate', () => {
+            if (!current || current.type !== 'bible') return;
+            const now = Date.now();
+            if (now - lastSave < 5000) return;
+            lastSave = now;
+            savePosition(current.i, Math.floor(player.currentTime));
+        });
+
+        function savePosition(i, t) {
+            try { localStorage.setItem(SAVE_KEY, JSON.stringify({ i: i, t: t })); } catch (e) {}
+        }
+
+        function loadPosition() {
+            try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+        }
+
+        // ---------------- Shared player logic ----------------
         player.addEventListener('playing', () => {
-            setStatus('Ζωντανά');
+            setStatus(current && current.type === 'bible' ? 'Ακρόαση' : 'Ζωντανά');
             playPauseBtn.innerText = '⏸';
         });
         player.addEventListener('waiting', () => setStatus('Φόρτωση...'));
         player.addEventListener('error', () => {
-            if (current === null) return;
-            setStatus('Ο σταθμός δεν απαντά', true);
+            if (!current) return;
+            setStatus(current.type === 'bible' ? 'Το κεφάλαιο δεν φορτώνει' : 'Ο σταθμός δεν απαντά', true);
             playPauseBtn.innerText = '▶';
         });
 
         function togglePlay() {
-            if (current === null) return;
+            if (!current) return;
             if (player.paused) {
-                // Reconnect to the live point instead of resuming old buffer
-                playStation(current);
+                if (current.type === 'radio') {
+                    playStation(current.i);      // live: reconnect to "now"
+                } else {
+                    player.play();               // chapter: continue where you were
+                }
             } else {
                 player.pause();
                 playPauseBtn.innerText = '▶';
                 setStatus('Σε παύση');
             }
+        }
+
+        // Share sheet (iPhone/iPad/Mac) — falls back to copying the link
+        function shareNow() {
+            const what = nameLabel.innerText;
+            const data = {
+                title: 'Το Ραδιάκι μας',
+                text: 'Ακούω «' + what + '» στο Ραδιάκι μας 📻',
+                url: location.href
+            };
+            if (navigator.share) {
+                navigator.share(data).catch(() => {});
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(data.text + ' ' + data.url)
+                    .then(() => setStatus('Ο σύνδεσμος αντιγράφηκε'))
+                    .catch(() => {});
+            }
+        }
+
+        // Lock screen / Control Center: title, artwork, and next/previous chapter
+        function setMediaSession(title, artist) {
+            if (!('mediaSession' in navigator)) return;
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title,
+                artist: artist,
+                album: 'Το Ραδιάκι μας',
+                artwork: [{ src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
+            });
+            const isBible = current && current.type === 'bible';
+            try {
+                navigator.mediaSession.setActionHandler('nexttrack', isBible
+                    ? () => { if (current.i + 1 < TRACKS.length) playChapter(current.i + 1, 0); }
+                    : null);
+                navigator.mediaSession.setActionHandler('previoustrack', isBible
+                    ? () => { if (current.i > 0) playChapter(current.i - 1, 0); }
+                    : null);
+            } catch (e) {}
         }
     </script>
 </body>
